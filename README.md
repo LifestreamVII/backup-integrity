@@ -14,6 +14,8 @@ Any abnormalities found during the scan are logged and can be sent via email if 
 
 SMTP settings can be configured in `config.py`, along with parameters for the scanning process, such as the target directory, the maximum age threshold and size dip percentage.
 
+**Important:** The baseline report is stored in `STATE_DIR` (configured in `config.py`), which should be outside the backup directory to prevent the baseline from being wiped if the backup directory is recreated. If `STATE_DIR` is not set, it defaults to the current working directory.
+
 ## Run
 
 Default run:

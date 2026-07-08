@@ -215,12 +215,17 @@ def save_report(report: Dict[str, Any], report_path: str) -> None:
 
 def main() -> None:
     backup_dir = config.backup_dir
-    report_path = os.path.join(backup_dir, config.report_name)
+    state_dir = config.state_dir
+    report_path = os.path.join(state_dir, config.report_name)
 
     # --- pre-flight checks --------------------------------------------------
     if not os.path.isdir(backup_dir):
         print(f"[error] Backup directory does not exist: {backup_dir}")
         sys.exit(1)
+
+    if not os.path.isdir(state_dir):
+        print(f"[info] State directory does not exist, creating: {state_dir}")
+        os.makedirs(state_dir, exist_ok=True)
 
     # --- load previous report ------------------------------------------------
     previous_report = load_previous_report(report_path)

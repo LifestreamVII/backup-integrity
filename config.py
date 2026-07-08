@@ -6,7 +6,12 @@
 # Every file and folder under this path will be verified.
 BACKUP_DIR = ""
 
-# Name of the JSON report that lives inside BACKUP_DIR.
+# Directory where state files are kept (outside the backup tree).
+# The baseline report will be stored here to survive backup directory recreation.
+# Defaults to the current working directory if not set.
+STATE_DIR = ""
+
+# Name of the JSON report (stored in STATE_DIR, not BACKUP_DIR).
 REPORT_NAME = "backup_report.json"
 
 # A file whose size drops below DIFF_THRESHOLD × previous size is flagged.
@@ -34,6 +39,7 @@ class Config:
 
     def __init__(self):
         self.backup_dir = BACKUP_DIR
+        self.state_dir = STATE_DIR if STATE_DIR else "."
         self.report_name = REPORT_NAME
         self.diff_threshold = DIFF_THRESHOLD
         self.max_age_hours = MAX_AGE_HOURS
