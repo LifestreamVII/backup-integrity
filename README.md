@@ -6,7 +6,7 @@ This script scans a backup directory, after a backup has been completed, against
 - Files that are present in the report but missing from the backup directory.
 - Files that have a large size dip (default: 50% size reduction) compared to the previous backup.
 
-After scanning, it overwrites the JSON report with the current state of the backup directory (no matter the scan result), so that it can be used for comparison in the next run.
+**Baseline update behavior:** By default, the baseline report is only updated when all checks pass. This prevents a bad backup from becoming the new normal. Use `--update-bad-baseline` to force an update even when errors are found (not recommended for production).
 
 Any abnormalities found during the scan are logged and can be sent via email if SMTP settings are configured.
 
@@ -18,8 +18,14 @@ SMTP settings can be configured in `config.py`, along with parameters for the sc
 
 ## Run
 
-Default run:
+Default run (baseline only updated on success):
 
 ```bash
 python main.py
+```
+
+Force baseline update even when errors are found:
+
+```bash
+python main.py --update-bad-baseline
 ```

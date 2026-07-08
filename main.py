@@ -5,6 +5,7 @@ main.py — Backup Integrity Verification
 Designed to run *after* a daily backup has been performed.
 """
 
+import argparse
 import json
 import os
 import sys
@@ -214,6 +215,16 @@ def save_report(report: Dict[str, Any], report_path: str) -> None:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Backup Integrity Verification: scan backup directory and compare against baseline."
+    )
+    parser.add_argument(
+        "--update-bad-baseline",
+        action="store_true",
+        help="Update the baseline report even when errors are found (not recommended for production use)",
+    )
+    args = parser.parse_args()
+
     backup_dir = config.backup_dir
     state_dir = config.state_dir
     report_path = os.path.join(state_dir, config.report_name)
@@ -263,9 +274,18 @@ def main() -> None:
     else:
         print("[info] All checks passed — backup is healthy.")
 
-    # --- write new report (always) -------------------------------------------
+    # --- write new report ----------------------------------------------------
+    # By default, only update baseline on successful runs.
+    # Use --update-bad-baseline to force update even when errors are found.
     report = build_report(current_files, total_folders, errors)
-    save_report(report, report_path)
+    
+    if errors and not args.update_bad_baseline:
+        print("[info] Baseline NOT updated (errors found and --update-bad-baseline not set).")
+        print(f"[info] To force baseline update despite errors, run with --update-bad-baseline")
+    else:
+        save_report(report, report_path)
+        if errors:
+            print("[warn] Baseline updated despite errors (--update-bad-baseline was set).")
 
     # --- exit code -----------------------------------------------------------
     sys.exit(1 if errors else 0)
