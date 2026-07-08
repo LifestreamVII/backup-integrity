@@ -32,9 +32,10 @@ def scan_backup_dir(backup_dir: str, report_name: str) -> List[Dict[str, Any]]:
     - ``path``  — relative POSIX path from *backup_dir*
     - ``size``  — size in bytes
     - ``mtime`` — ISO-8601 UTC timestamp of last modification
-    - ``btime`` — ISO-8601 UTC timestamp of last metadata change (ctime)
+    - ``btime`` — ISO-8601 UTC timestamp of birth/creation (st_birthtime on macOS/BSD, st_mtime fallback on Linux)
 
     The report file itself (``report_name``) is excluded from the scan.
+    Files that cannot be stat'd (broken symlinks, permission errors) are logged and skipped.
     """
     files: List[Dict[str, Any]] = []
     backup_root = Path(backup_dir)
@@ -48,7 +49,17 @@ def scan_backup_dir(backup_dir: str, report_name: str) -> List[Dict[str, Any]]:
             if rel_path == report_name:
                 continue
 
-            stat = full_path.stat()
+            try:
+                stat = full_path.stat()
+            except (OSError, PermissionError) as exc:
+                print(f"[warn] Could not stat '{rel_path}': {exc}")
+                continue
+
+            # st_birthtime exists on macOS/BSD but not Linux; fall back to mtime.
+            birthtime = getattr(stat, "st_birthtime", None)
+            if birthtime is None:
+                birthtime = stat.st_mtime
+
             files.append(
                 {
                     "path": rel_path,
@@ -57,7 +68,7 @@ def scan_backup_dir(backup_dir: str, report_name: str) -> List[Dict[str, Any]]:
                         stat.st_mtime, tz=timezone.utc
                     ).isoformat(),
                     "btime": datetime.fromtimestamp(
-                        stat.st_birthtime, tz=timezone.utc
+                        birthtime, tz=timezone.utc
                     ).isoformat(),
                 }
             )
