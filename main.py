@@ -25,7 +25,7 @@ def _now_utc() -> datetime:
 
 # ── scanning ───────────────────────────────────────────────────────────────
 
-def scan_backup_dir(backup_dir: str, report_name: str) -> List[Dict[str, Any]]:
+def scan_backup_dir(backup_dir: str, report_name: str, total_folders: int) -> List[Dict[str, Any]]:
     """
     Recursively walk *backup_dir* and return a list of dicts, one per
     file, each containing:
@@ -41,7 +41,8 @@ def scan_backup_dir(backup_dir: str, report_name: str) -> List[Dict[str, Any]]:
     files: List[Dict[str, Any]] = []
     backup_root = Path(backup_dir)
 
-    for dirpath, _dirnames, filenames in os.walk(backup_dir):
+    for dirpath, dirnames, filenames in os.walk(backup_dir):
+        total_folders += len(dirnames)
         for fname in filenames:
             full_path = Path(dirpath) / fname
             rel_path = full_path.relative_to(backup_root).as_posix()
@@ -75,15 +76,6 @@ def scan_backup_dir(backup_dir: str, report_name: str) -> List[Dict[str, Any]]:
             )
 
     return files
-
-def count_total_folders(backup_dir: str) -> int:
-    """
-    Count the total number of folders (directories) in *backup_dir*.
-    """
-    total_folders = 0
-    for _, dirnames, _ in os.walk(backup_dir):
-        total_folders += len(dirnames)
-    return total_folders
 
 # ── previous report ───────────────────────────────────────────────────────
 
@@ -229,6 +221,8 @@ def main() -> None:
     state_dir = config.state_dir
     report_path = os.path.join(state_dir, config.report_name)
 
+    total_folders = 0
+
     # --- pre-flight checks --------------------------------------------------
     if not os.path.isdir(backup_dir):
         print(f"[error] Backup directory does not exist: {backup_dir}")
@@ -251,8 +245,7 @@ def main() -> None:
 
     # --- scan current backup -------------------------------------------------
     print(f"[info] Scanning {backup_dir} …")
-    current_files = scan_backup_dir(backup_dir, config.report_name)
-    total_folders = count_total_folders(backup_dir)
+    current_files = scan_backup_dir(backup_dir, config.report_name, total_folders)
     print(
         f"[info] Found {len(current_files)} file(s) in "
         f"{total_folders} folder(s)."
