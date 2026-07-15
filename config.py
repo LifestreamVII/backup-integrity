@@ -11,8 +11,8 @@ BACKUP_DIR = ""
 # Defaults to the current working directory if not set.
 STATE_DIR = ""
 
-# Name of the JSON report (stored in STATE_DIR, not BACKUP_DIR).
-REPORT_NAME = "backup_report.json"
+# SQLite database filename (stored inside STATE_DIR).
+DB_NAME = "backup_integrity.db"
 
 # A file whose size drops below DIFF_THRESHOLD × previous size is flagged.
 # 0.5 → tolerate up to a 50 % size reduction before alerting.
@@ -40,7 +40,7 @@ class Config:
     def __init__(self):
         self.backup_dir = BACKUP_DIR
         self.state_dir = STATE_DIR if STATE_DIR else "."
-        self.report_name = REPORT_NAME
+        self.db_name = DB_NAME
         self.diff_threshold = DIFF_THRESHOLD
         self.max_age_hours = MAX_AGE_HOURS
 
