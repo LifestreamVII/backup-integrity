@@ -39,7 +39,7 @@ def scan_backup_dir(conn: sqlite3.Connection, backup_dir: str) -> int:
     total_folders = 0
 
     for dirpath, dirnames, filenames in os.walk(backup_dir):
-        total_folders += len(dirnames)
+        total_folders += 1  # count this directory (os.walk yields one row per dir)
         for fname in filenames:
             full_path = Path(dirpath) / fname
             rel_path = full_path.relative_to(backup_root).as_posix()
