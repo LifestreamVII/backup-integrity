@@ -2,6 +2,16 @@ import json
 import sqlite3
 from typing import Any, Dict, List, Optional
 
+# Tables that are safe to interpolate into SQL via f-string.
+_VALID_TABLES = frozenset({"manifest", "previous", "meta"})
+
+
+def _validate_table(table: str) -> None:
+    """Raise ``ValueError`` if *table* is not in the whitelist."""
+    if table not in _VALID_TABLES:
+        raise ValueError(f"Invalid table name: '{table}'")
+
+
 def init_db(db_path: str) -> None:
     """Initialize the SQLite database at *db_path*."""
     try:
@@ -56,6 +66,7 @@ def close_db(conn: sqlite3.Connection) -> None:
 
 def read(conn: sqlite3.Connection, table: str) -> List[dict]:
     """Read data from the specified table."""
+    _validate_table(table)
     try:
         cursor = conn.cursor()
         cursor.execute(f"SELECT * FROM {table};")
@@ -92,6 +103,7 @@ def save(conn: sqlite3.Connection, table: str, data: dict, commit: bool = True) 
     Set *commit* to ``False`` when batching many inserts in a caller-managed
     transaction — avoids one fsync per row.
     """
+    _validate_table(table)
     try:
         cols = ", ".join(data.keys())
         placeholders = ", ".join("?" for _ in data)
