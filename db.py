@@ -83,8 +83,12 @@ def read_meta(conn: sqlite3.Connection, bdir_id: str, date: Optional[str] = None
         print(f"[error] Could not read metadata from meta: {e}")
         return None
 
-def save(conn: sqlite3.Connection, table: str, data: dict) -> None:
-    """Insert or replace a single row into *table*."""
+def save(conn: sqlite3.Connection, table: str, data: dict, commit: bool = True) -> None:
+    """Insert or replace a single row into *table*.
+
+    Set *commit* to ``False`` when batching many inserts in a caller-managed
+    transaction — avoids one fsync per row.
+    """
     try:
         cols = ", ".join(data.keys())
         placeholders = ", ".join("?" for _ in data)
@@ -92,7 +96,8 @@ def save(conn: sqlite3.Connection, table: str, data: dict) -> None:
             f"INSERT OR REPLACE INTO {table} ({cols}) VALUES ({placeholders});",
             tuple(data.values()),
         )
-        conn.commit()
+        if commit:
+            conn.commit()
     except sqlite3.Error as e:
         print(f"[error] Could not save data to {table}: {e}")
         raise

@@ -38,6 +38,8 @@ def scan_backup_dir(conn: sqlite3.Connection, backup_dir: str) -> int:
     backup_root = Path(backup_dir)
     total_folders = 0
 
+    # Explicit transaction — commit once at the end instead of once per file.
+    conn.execute("BEGIN")
     for dirpath, dirnames, filenames in os.walk(backup_dir):
         total_folders += 1  # count this directory (os.walk yields one row per dir)
         for fname in filenames:
@@ -65,10 +67,11 @@ def scan_backup_dir(conn: sqlite3.Connection, backup_dir: str) -> int:
                         "btime": datetime.fromtimestamp(
                             birthtime, tz=timezone.utc
                         ).isoformat(),
-                })
+                }, commit=False)
             except sqlite3.Error as exc:
                 print(f"[warn] Could not save metadata for '{rel_path}': {exc}")
 
+    conn.commit()
     return total_folders
 
 # ── previous report ───────────────────────────────────────────────────────
