@@ -66,14 +66,17 @@ def read(conn: sqlite3.Connection, table: str) -> List[dict]:
         print(f"[error] Could not read from {table}: {e}")
         return []
 
-def read_meta(conn: sqlite3.Connection, bdir_id: str, date: Optional[str] = None) -> Optional[dict]:
-    """Read metadata for the specified backup directory ID and optional date."""
+def read_meta(conn: sqlite3.Connection, bdir_id: str) -> Optional[dict]:
+    """
+    Read the latest metadata row for the given backup directory ID.
+    Returns ``None`` when no metadata exists.
+    """
     try:
         cursor = conn.cursor()
-        if date:
-            cursor.execute("SELECT * FROM meta WHERE bdir_id = ? AND date = ?;", (bdir_id, date))
-        else:
-            cursor.execute("SELECT * FROM meta WHERE bdir_id = ? ORDER BY date DESC LIMIT 1;", (bdir_id,))
+        cursor.execute(
+            "SELECT * FROM meta WHERE bdir_id = ? ORDER BY date DESC LIMIT 1;",
+            (bdir_id,),
+        )
         row = cursor.fetchone()
         if row:
             columns = [description[0] for description in cursor.description]
