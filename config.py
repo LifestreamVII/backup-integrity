@@ -4,7 +4,7 @@
 
 # Path to the root of the backed-up directory on the NAS.
 # Every file and folder under this path will be verified.
-BACKUP_DIR = ""
+BACKUP_DIR = "backup"
 
 # Directory where state files are kept (outside the backup tree).
 # The baseline report will be stored here to survive backup directory recreation.

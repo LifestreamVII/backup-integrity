@@ -24,11 +24,16 @@ def init_db(db_path: str) -> None:
             mtime TEXT NOT NULL,
             btime TEXT NOT NULL
         );
+        """
+        )
+        conn.execute("""
         -- for previous report
         CREATE TABLE IF NOT EXISTS previous (
             path TEXT PRIMARY KEY,
             size INTEGER NOT NULL
         );
+        """)
+        conn.execute("""
         -- for metadata, e.g. last run time, etc.
         CREATE TABLE IF NOT EXISTS meta (
             bdir_id TEXT PRIMARY KEY,
@@ -63,19 +68,6 @@ def close_db(conn: sqlite3.Connection) -> None:
         conn.close()
     except sqlite3.Error as e:
         print(f"[error] Could not close database connection: {e}")
-
-def read(conn: sqlite3.Connection, table: str) -> List[dict]:
-    """Read data from the specified table."""
-    _validate_table(table)
-    try:
-        cursor = conn.cursor()
-        cursor.execute(f"SELECT * FROM {table};")
-        columns = [description[0] for description in cursor.description]
-        rows = cursor.fetchall()
-        return [dict(zip(columns, row)) for row in rows]
-    except sqlite3.Error as e:
-        print(f"[error] Could not read from {table}: {e}")
-        return []
 
 def read_meta(conn: sqlite3.Connection, bdir_id: str) -> Optional[dict]:
     """
