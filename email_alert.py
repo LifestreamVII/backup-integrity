@@ -36,7 +36,7 @@ def _build_html_body(errors: List[str], backup_dir: str) -> str:
 </html>"""
 
 
-def send_alert(errors: List[str]) -> None:
+def send_alert(errors: List[str], unverified_context: bool = False) -> None:
     """
     Send an email alert listing all *errors* found during the integrity
     check.  Silently returns if SMTP is not configured (empty host).
@@ -57,7 +57,10 @@ def send_alert(errors: List[str]) -> None:
     msg["To"] = config.email_recipient
     msg.attach(MIMEText(html, "html"))
 
-    context = ssl._create_unverified_context()
+    if unverified_context:
+      context = ssl._create_unverified_context()
+    else:
+      context = ssl.create_default_context()
     with smtplib.SMTP(config.smtp_host, config.smtp_port) as server:
         server.starttls(context=context)
         server.login(config.smtp_user, config.smtp_password)

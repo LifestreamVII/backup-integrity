@@ -207,6 +207,11 @@ def main() -> None:
         action="store_true",
         help="Update the baseline report even when errors are found (not recommended for production use)",
     )
+    parser.add_argument(
+        "--unverified-context",
+        action="store_true",
+        help="SMTP context is unverified (e.g., self-signed cert)",
+    )
     args = parser.parse_args()
 
     backup_dir = config.backup_dir
@@ -252,7 +257,7 @@ def main() -> None:
         print(f"[warn] {len(errors)} problem(s) detected:")
         for err in errors:
             print(f"  ✗ {err}")
-        send_alert(errors)
+        send_alert(errors, unverified_context=args.unverified_context)
     else:
         print("[info] All checks passed — backup is healthy.")
 
