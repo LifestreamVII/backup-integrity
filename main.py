@@ -117,20 +117,13 @@ def verify_backup(
         "WHERE mtime < ? AND btime < ?",
         (cutoff_iso, cutoff_iso),
     )
-    stale_count = 0
     for rel_path, mtime_str, btime_str in cur:
-        stale_count += 1
-        if stale_count <= 10:  # cap individual error lines to avoid flooding
-            age_h = (now - datetime.fromisoformat(mtime_str)).total_seconds() / 3600
-            age_b_h = (now - datetime.fromisoformat(btime_str)).total_seconds() / 3600
-            errors.append(
-                f"STALE file '{rel_path}': last modified {age_h:.1f} h ago "
-                f"|| last created {age_b_h:.1f} h ago "
-                f"(threshold: {max_age_hours} h)"
-            )
-    if stale_count > 10:
+        age_h = (now - datetime.fromisoformat(mtime_str)).total_seconds() / 3600
+        age_b_h = (now - datetime.fromisoformat(btime_str)).total_seconds() / 3600
         errors.append(
-            f"… and {stale_count - 10} more stale file(s) (of {stale_count} total)"
+            f"STALE file '{rel_path}': last modified {age_h:.1f} h ago "
+            f"|| last created {age_b_h:.1f} h ago "
+            f"(threshold: {max_age_hours} h)"
         )
 
     # ── 2. Size-drop check (streaming JOIN) ──────────────────────────────────
