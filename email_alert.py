@@ -128,7 +128,8 @@ def send_alert(errors: List[str], unverified_context: bool = False) -> None:
             server.starttls(context=context)
             server.login(config.smtp_user, config.smtp_password)
             server.sendmail(config.email_sender, config.email_recipient, msg.as_string())
-    except smtplib.SMTPException:
-        log.exception("📧 ❌ Failed to send summary email.")
+            print(f"[email] Alert sent to {config.email_recipient}.")
+    except smtplib.SMTPException as e:
+        print("[error] 📧 ❌ Failed to send summary email.")
+        print(f"[error] SMTP error: {e}")
 
-    print(f"[email] Alert sent to {config.email_recipient}.")
