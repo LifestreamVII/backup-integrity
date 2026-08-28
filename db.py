@@ -14,8 +14,8 @@ def _validate_table(table: str) -> None:
 
 def init_db(db_path: str) -> None:
     """Initialize the SQLite database at *db_path*."""
+    conn = sqlite3.connect(db_path)
     try:
-        conn = sqlite3.connect(db_path)
         conn.execute("""
         -- for files
         CREATE TABLE IF NOT EXISTS manifest (
@@ -45,13 +45,10 @@ def init_db(db_path: str) -> None:
             skipped TEXT,
             errors TEXT
         );
-        """);
+        """)
         conn.commit()
-    except sqlite3.Error as e:
-        print(f"[error] Could not initialize database: {e}")
     finally:
-        if 'conn' in locals():
-            conn.close()
+        conn.close()
 
 def connect_db(db_path: str) -> sqlite3.Connection:
     """Connect to the SQLite database at *db_path*."""

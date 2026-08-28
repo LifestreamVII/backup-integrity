@@ -213,8 +213,6 @@ def main() -> None:
 
     state_dir = config.state_dir
     db_path = os.path.join(state_dir, config.db_name)
-    db.init_db(db_path)
-    conn = db.connect_db(db_path)
 
     # --- pre-flight checks --------------------------------------------------
     if not os.path.isdir(backup_dir):
@@ -224,6 +222,10 @@ def main() -> None:
     if not os.path.isdir(state_dir):
         print(f"[info] State directory does not exist, creating: {state_dir}")
         os.makedirs(state_dir, exist_ok=True)
+
+    db.init_db(db_path)
+    conn = db.connect_db(db_path)
+
 
     # --- load previous report ------------------------------------------------
     previous_meta = load_previous_meta(conn, bdir_id)
