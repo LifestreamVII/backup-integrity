@@ -155,18 +155,15 @@ def verify_backup(
 
     return errors
 
-
-# ── report writing ────────────────────────────────────────────────────────
-
-def save_report(
+# ── metadata ─────────────────────────────────────────────────────────────
+def save_meta(
     conn: sqlite3.Connection,
     bdir_id: str,
     total_folders: int,
     errors: List[str],
 ) -> None:
     """
-    Persist the run results into the *meta* table and rotate the current
-    *manifest* into the *previous* table for next run's comparison.
+    Persist the run results into the *meta* table
     """
     total_files = db.count_manifest(conn)
     total_size = db.sum_manifest_size(conn)
@@ -183,11 +180,7 @@ def save_report(
         errors=errors if errors else None,
     )
 
-    # Snapshot current manifest → previous for next run.
-    db.rotate_previous(conn)
-
-    print(f"[info] Report saved to database (status={status}, files={total_files}, size={total_size}).")
-
+    print(f"[info] Metadata saved to database (status={status}, files={total_files}, size={total_size}).")
 
 # ── main entry point ──────────────────────────────────────────────────────
 
@@ -259,11 +252,9 @@ def main() -> None:
     # --- write new report ----------------------------------------------------
     # By default, only update baseline on successful runs.
     # Use --update-bad-baseline to force update even when errors are found.
-    if errors and not args.update_bad_baseline:
-        print("[info] Baseline NOT updated (errors found and --update-bad-baseline not set).")
-        print(f"[info] To force baseline update despite errors, run with --update-bad-baseline")
-    else:
-        save_report(conn, bdir_id, total_folders, errors)
+    save_meta(conn, bdir_id, total_folders, errors)
+    if not errors or args.update_bad_baseline:
+        db.rotate_previous(conn)
         if errors:
             print("[warn] Baseline updated despite errors (--update-bad-baseline was set).")
 

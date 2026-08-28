@@ -36,7 +36,8 @@ def init_db(db_path: str) -> None:
         conn.execute("""
         -- for metadata, e.g. last run time, etc.
         CREATE TABLE IF NOT EXISTS meta (
-            bdir_id TEXT PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bdir_id TEXT NOT NULL,
             date TEXT NOT NULL,
             status TEXT NOT NULL,
             total_folders INTEGER NOT NULL,
@@ -87,7 +88,7 @@ def read_meta(conn: sqlite3.Connection, bdir_id: str) -> Optional[dict]:
         return None
 
 def save(conn: sqlite3.Connection, table: str, data: dict, commit: bool = True) -> None:
-    """Insert or replace a single row into *table*.
+    """Insert a new row into *table*.
 
     Set *commit* to ``False`` when batching many inserts in a caller-managed
     transaction — avoids one fsync per row.
@@ -97,7 +98,7 @@ def save(conn: sqlite3.Connection, table: str, data: dict, commit: bool = True) 
         cols = ", ".join(data.keys())
         placeholders = ", ".join("?" for _ in data)
         conn.execute(
-            f"INSERT OR REPLACE INTO {table} ({cols}) VALUES ({placeholders});",
+            f"INSERT INTO {table} ({cols}) VALUES ({placeholders});",
             tuple(data.values()),
         )
         if commit:
