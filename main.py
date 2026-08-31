@@ -12,7 +12,7 @@ import sqlite3
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import List
+from typing import Dict, List
 
 from config import config
 from email_alert import send_alert
@@ -30,13 +30,15 @@ def _short_hash(text: str) -> str:
 
 # ── scanning ───────────────────────────────────────────────────────────────
 
-def scan_backup_dir(conn: sqlite3.Connection, backup_dir: str) -> int:
+def scan_backup_dir(conn: sqlite3.Connection, backup_dir: str) -> Dict[str, int | List[str]]:
     """
     Recursively walk *backup_dir* and stream file metadata into the
     *manifest* table.  Returns the total number of folders encountered.
     """
     backup_root = Path(backup_dir)
     total_folders = 0
+    errors: List[str] = []
+    skipped: List[str] = []
 
     # Explicit transaction — commit once at the end instead of once per file.
     conn.execute("BEGIN")
@@ -49,7 +51,9 @@ def scan_backup_dir(conn: sqlite3.Connection, backup_dir: str) -> int:
             try:
                 stat = full_path.stat()
             except (OSError, PermissionError) as exc:
-                print(f"[warn] Could not stat '{rel_path}': {exc}")
+                e = (f"[warn] Could not stat '{rel_path}': {exc}")
+                errors.append(e)
+                skipped.append(rel_path)
                 continue
 
             # st_birthtime exists on macOS/BSD but not Linux; fall back to mtime.
@@ -69,10 +73,11 @@ def scan_backup_dir(conn: sqlite3.Connection, backup_dir: str) -> int:
                         ).isoformat(),
                 }, commit=False)
             except sqlite3.Error as exc:
-                print(f"[warn] Could not save metadata for '{rel_path}': {exc}")
+                e = f"[warn] Could not save metadata for '{rel_path}': {exc}"
+                errors.append(e)
 
     conn.commit()
-    return total_folders
+    return {"total_folders": total_folders, "errors": errors, "skipped": skipped}
 
 # ── previous report ───────────────────────────────────────────────────────
 
@@ -161,6 +166,7 @@ def save_meta(
     bdir_id: str,
     total_folders: int,
     errors: List[str],
+    skipped: List[str] | None = None,
 ) -> None:
     """
     Persist the run results into the *meta* table
@@ -178,6 +184,7 @@ def save_meta(
         total_files=total_files,
         total_size=total_size,
         errors=errors if errors else None,
+        skipped=skipped if skipped else None,
     )
 
     print(f"[info] Metadata saved to database (status={status}, files={total_files}, size={total_size}).")
@@ -232,27 +239,30 @@ def main() -> None:
     # --- scan current backup -------------------------------------------------
     print(f"[info] Scanning {backup_dir} …")
     db.clear_manifest(conn)
-    total_folders = scan_backup_dir(conn, backup_dir)
+    scan_result = scan_backup_dir(conn, backup_dir)
+    total_folders = scan_result["total_folders"]
+    errors = scan_result["errors"]
+    skipped = scan_result.get("skipped", [])
 
     # --- verify integrity ----------------------------------------------------
-    errors = verify_backup(
+    verify_result = verify_backup(
         conn=conn,
         max_age_hours=config.max_age_hours,
         diff_threshold=config.diff_threshold,
     )
-
+    errors.extend(verify_result)
     if errors:
         print(f"[warn] {len(errors)} problem(s) detected:")
         for err in errors:
             print(f"  ✗ {err}")
-        send_alert(errors, unverified_context=args.unverified_context)
+        send_alert(errors, skipped=skipped, unverified_context=args.unverified_context)
     else:
         print("[info] All checks passed — backup is healthy.")
 
     # --- write new report ----------------------------------------------------
     # By default, only update baseline on successful runs.
     # Use --update-bad-baseline to force update even when errors are found.
-    save_meta(conn, bdir_id, total_folders, errors)
+    save_meta(conn, bdir_id, total_folders, errors, skipped)
     if not errors or args.update_bad_baseline:
         db.rotate_previous(conn)
         if errors:
