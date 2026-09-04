@@ -14,8 +14,8 @@ def _validate_table(table: str) -> None:
 
 def init_db(db_path: str) -> None:
     """Initialize the SQLite database at *db_path*."""
+    conn = sqlite3.connect(db_path)
     try:
-        conn = sqlite3.connect(db_path)
         conn.execute("""
         -- for files
         CREATE TABLE IF NOT EXISTS manifest (
@@ -36,7 +36,8 @@ def init_db(db_path: str) -> None:
         conn.execute("""
         -- for metadata, e.g. last run time, etc.
         CREATE TABLE IF NOT EXISTS meta (
-            bdir_id TEXT PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bdir_id TEXT NOT NULL,
             date TEXT NOT NULL,
             status TEXT NOT NULL,
             total_folders INTEGER NOT NULL,
@@ -45,13 +46,10 @@ def init_db(db_path: str) -> None:
             skipped TEXT,
             errors TEXT
         );
-        """);
+        """)
         conn.commit()
-    except sqlite3.Error as e:
-        print(f"[error] Could not initialize database: {e}")
     finally:
-        if 'conn' in locals():
-            conn.close()
+        conn.close()
 
 def connect_db(db_path: str) -> sqlite3.Connection:
     """Connect to the SQLite database at *db_path*."""
@@ -90,7 +88,7 @@ def read_meta(conn: sqlite3.Connection, bdir_id: str) -> Optional[dict]:
         return None
 
 def save(conn: sqlite3.Connection, table: str, data: dict, commit: bool = True) -> None:
-    """Insert or replace a single row into *table*.
+    """Insert a new row into *table*.
 
     Set *commit* to ``False`` when batching many inserts in a caller-managed
     transaction — avoids one fsync per row.
@@ -100,7 +98,7 @@ def save(conn: sqlite3.Connection, table: str, data: dict, commit: bool = True) 
         cols = ", ".join(data.keys())
         placeholders = ", ".join("?" for _ in data)
         conn.execute(
-            f"INSERT OR REPLACE INTO {table} ({cols}) VALUES ({placeholders});",
+            f"INSERT INTO {table} ({cols}) VALUES ({placeholders});",
             tuple(data.values()),
         )
         if commit:

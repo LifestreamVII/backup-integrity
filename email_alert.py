@@ -37,7 +37,7 @@ def _group_and_cap_errors(errors: List[str]) -> dict:
     return grouped
 
 
-def _build_html_body(errors: List[str], backup_dir: str, limit: int = 10) -> str:
+def _build_html_body(errors: List[str], backup_dir: str, skipped: List[str] | None = None, limit: int = 10) -> str:
     """Return an HTML email body with errors grouped by folder and failure type, and capped."""
     grouped = _group_and_cap_errors(errors)
 
@@ -72,6 +72,18 @@ def _build_html_body(errors: List[str], backup_dir: str, limit: int = 10) -> str
 
     grouped_html = "\n".join(sections)
 
+    skipped_html = ""
+    if skipped:
+        skipped_items = "".join(f"<li><code>{path}</code></li>" for path in skipped[:limit])
+        more = f'<li style="color: #7f8c8d; list-style-type: none; font-style: italic;">... and {len(skipped) - limit} more</li>' if len(skipped) > limit else ""
+        skipped_html = f"""
+  <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+  <h3 style="color: #e67e22;">⚠ Skipped Files ({len(skipped)} total)</h3>
+  <p style="font-size: 0.9em;">These files could not be read during the scan (permission error or I/O failure) and were excluded from all checks:</p>
+  <ul style="font-size: 0.9em; font-family: monospace; padding-left: 20px;">
+    {skipped_items}{more}
+  </ul>"""
+
     return f"""\
 <html>
 <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.4;">
@@ -81,6 +93,7 @@ def _build_html_body(errors: List[str], backup_dir: str, limit: int = 10) -> str
   <p>A total of <strong>{len(errors)}</strong> issues were detected. A preview grouped by folder is shown below. The complete list of errors is attached as a TXT file.</p>
   <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
   {grouped_html}
+  {skipped_html}
   <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
   <p style="font-size: 0.85em; color: #888;">
     This alert was generated automatically by the backup-integrity verification script.
@@ -89,7 +102,7 @@ def _build_html_body(errors: List[str], backup_dir: str, limit: int = 10) -> str
 </html>"""
 
 
-def send_alert(errors: List[str], unverified_context: bool = False) -> None:
+def send_alert(errors: List[str], skipped: List[str] | None = None, unverified_context: bool = False) -> None:
     """
     Send an email alert listing all *errors* found during the integrity
     check.  Silently returns if SMTP is not configured (empty host).
@@ -99,10 +112,14 @@ def send_alert(errors: List[str], unverified_context: bool = False) -> None:
         print("[email] The following errors would have been reported:")
         for err in errors:
             print(f"  • {err}")
+        if skipped:
+            print(f"[email] {len(skipped)} file(s) were skipped during the scan:")
+            for path in skipped:
+                print(f"  • {path}")
         return
 
     subject = f"{config.email_subject_prefix} {len(errors)} issue(s) detected"
-    html = _build_html_body(errors, config.backup_dir)
+    html = _build_html_body(errors, config.backup_dir, skipped=skipped)
 
     msg = MIMEMultipart("mixed")
     msg["Subject"] = subject
